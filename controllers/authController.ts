@@ -1,6 +1,8 @@
 import { Request, Response } from "npm:express@4.21.2";
 import { comparePassword, generateToken, hashPassword } from "../utils/auth.ts";
 import User from "../models/User.ts";
+import { uploadToCloudinary } from "../utils/cloudinaryUpload.ts";
+import { join } from "https://deno.land/std@0.224.0/path/mod.ts";
 
 export const register = async (req: Request, res: Response) => {
   try {
@@ -13,11 +15,20 @@ export const register = async (req: Request, res: Response) => {
 
     const hashedPassword = await hashPassword(password);
 
+    // Upload de l'avatar par défaut sur Cloudinary
+    const defaultAvatarPath = join(Deno.cwd(), "public", "default-avatar.png");
+    const defaultAvatarContent = await Deno.readFile(defaultAvatarPath);
+    const uploadResult = await uploadToCloudinary(
+      defaultAvatarContent,
+      "avatars",
+    );
+
     const user = await User.create({
       name,
       email,
       password: hashedPassword,
-      avatar: "default-avatar.png",
+      avatar: uploadResult.secure_url,
+      avatar_public_id: uploadResult.public_id,
     });
 
     const token = await generateToken({ id: user._id.toString() });
